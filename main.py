@@ -5,7 +5,7 @@ import utils
 from options import *
 from config import *
 from train import *
-from ucf_test import test
+from test import test
 from model import *
 from utils import Visualizer
 import os
@@ -18,6 +18,7 @@ if __name__ == "__main__":
         pdb.set_trace()
 
     config = Config(args)
+    # print(config)
     worker_init_fn = None
     gpus = [0]
     torch.cuda.set_device("cuda:{}".format(gpus[0]))
@@ -38,8 +39,8 @@ if __name__ == "__main__":
             len_feature=config.len_feature,
             is_normal=True,
         ),
-        batch_size=64,
-        shuffle=True,
+        batch_size=1,
+        shuffle=True,  # just shuffles the videos in the dataloader, not the frames or instances
         num_workers=config.num_workers,
         worker_init_fn=worker_init_fn,
         drop_last=True,
@@ -72,19 +73,24 @@ if __name__ == "__main__":
         num_workers=config.num_workers,
         worker_init_fn=worker_init_fn,
     )
+    print(len(normal_train_loader))
+    print(len(abnormal_train_loader))
+    print(len(test_loader))
 
     test_info = {"step": [], "auc": [], "ap": [], "ac": []}
 
     best_auc = 0
 
-    criterion = AD_Loss()
+    criterion = AD_Loss()  # specific loss function used by the code
 
     optimizer = torch.optim.Adam(
         net.parameters(), lr=config.lr[0], betas=(0.9, 0.999), weight_decay=0.00005
-    )
+    )  # betas for  momentum, weight decay for overfitting
 
-    wind = Visualizer(env="UCF_URDMU", port="2022", use_incoming_socket=False)
-    test(net, config, wind, test_loader, test_info, 0)
+    wind = Visualizer(
+        env="UCF_URDMU", port="2022", use_incoming_socket=False
+    )  # live dashboard for model analytics. sets it up in localhost.
+    test(net, test_loader, wind, test_info, step=0)
     for step in tqdm(
         range(1, config.num_iters + 1), total=config.num_iters, dynamic_ncols=True
     ):
@@ -106,24 +112,26 @@ if __name__ == "__main__":
             step,
         )
         if step % 10 == 0 and step > 10:
-            test(net, config, wind, test_loader, test_info, step)
+            test(net, test_loader, wind, test_info, step=0)
+
             if test_info["auc"][-1] > best_auc:
                 best_auc = test_info["auc"][-1]
                 utils.save_best_record(
                     test_info,
                     os.path.join(
-                        config.output_path, "ucf_best_record_{}.txt".format(config.seed)
+                        config.output_path,
+                        "moerdijk_best_record_{}.txt".format(config.seed),
                     ),
                 )
 
                 torch.save(
                     net.state_dict(),
                     os.path.join(
-                        args.model_path, "ucf_trans_{}.pkl".format(config.seed)
+                        args.model_path, "moerdijk_trans_{}.pkl".format(config.seed)
                     ),
                 )
             if step == config.num_iters:
                 torch.save(
                     net.state_dict(),
-                    os.path.join(args.model_path, "ucf_trans_{}.pkl".format(step)),
+                    os.path.join(args.model_path, "moerdijk_trans_{}.pkl".format(step)),
                 )

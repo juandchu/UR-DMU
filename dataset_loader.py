@@ -5,7 +5,7 @@ import numpy as np
 import utils
 
 
-class FeatureDataset(data.DataLoader):
+class FeatureDataset(data.Dataset):
     def __init__(
         self, root_dir, modal, mode, num_segments, len_feature, seed=-1, is_normal=None
     ):
@@ -25,13 +25,13 @@ class FeatureDataset(data.DataLoader):
             self.vid_list.append(line.split())
         split_file.close()
 
-        # For generic dataset, optionally filter by is_normal if needed
+        # filter normal and abnormal
         if is_normal is not None:
             filtered_list = []
             for path in self.vid_list:
-                if is_normal and "normal" in path[0].lower():
+                if is_normal and "norm" in path[0].lower():
                     filtered_list.append(path)
-                elif not is_normal and "abnormal" in path[0].lower():
+                elif not is_normal and "ab" in path[0].lower():
                     filtered_list.append(path)
             self.vid_list = filtered_list
 
@@ -39,34 +39,59 @@ class FeatureDataset(data.DataLoader):
         return len(self.vid_list)
 
     def __getitem__(self, index):
-
         if self.mode == "Test":
             data, label, name = self.get_data(index)
+            # print("Test", index, name)
             return data, label, name
         else:
             data, label = self.get_data(index)
+            print("Train", index)
             return data, label
 
     def get_data(self, index):
         vid_info = self.vid_list[index][0]
-        name = vid_info.split("/")[-1].split("_x264")[0]
-        video_feature = np.load(vid_info).astype(np.float32)
+        filename = vid_info.split("/")[-1]  # e.g. "video_eo_94_650_ab.npy"
+        name = "_".join(filename.split("_")[:3])
+        # print(vid_info)
+        print("this should print")
+        feature_path = os.path.join("feature_embeddings", vid_info)
+        if not os.path.exists(feature_path):
+            print(f"Warning: {feature_path} not found. Skipping.")
+            return None  # mark missing entry
 
-        if "norm" in vid_info.split("/")[-1]:
-            label = 0
+        video_feature = np.load(os.path.join("feature_embeddings", vid_info)).astype(
+            np.float32
+        )
+
+        f_lower = filename.lower()
+        if "norm" in f_lower:
+            label = 0  # normal
         else:
-            label = 1
+            label = 1  # abnormal
+
+        # ----------------------------
+        # 4. Temporal segmentation (training only)
+        # ----------------------------
         if self.mode == "Train":
-            new_feat = np.zeros((self.num_segments, video_feature.shape[1])).astype(
-                np.float32
+            new_feat = np.zeros(
+                (self.num_segments, video_feature.shape[1]), dtype=np.float32
             )
-            r = np.linspace(0, len(video_feature), self.num_segments + 1, dtype=np.int)
+
+            # Split frames into num_segments equal parts
+            r = np.linspace(0, len(video_feature), self.num_segments + 1, dtype=int)
+
             for i in range(self.num_segments):
-                if r[i] != r[i + 1]:
-                    new_feat[i, :] = np.mean(video_feature[r[i] : r[i + 1], :], 0)
+                start, end = r[i], r[i + 1]
+                if start < end:
+                    new_feat[i] = np.mean(video_feature[start:end], axis=0)
                 else:
-                    new_feat[i : i + 1, :] = video_feature[r[i] : r[i] + 1, :]
+                    new_feat[i] = video_feature[start]
+
             video_feature = new_feat
+
+        # ----------------------------
+        # 5. Return data
+        # ----------------------------
         if self.mode == "Test":
             return video_feature, label, name
         else:
