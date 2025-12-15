@@ -39,11 +39,11 @@ if __name__ == "__main__":
             len_feature=config.len_feature,
             is_normal=True,
         ),
-        batch_size=1,
+        batch_size=8, #original was 64
         shuffle=True,  # just shuffles the videos in the dataloader, not the frames or instances
         num_workers=config.num_workers,
         worker_init_fn=worker_init_fn,
-        drop_last=True,
+        drop_last=False,
     )
     abnormal_train_loader = data.DataLoader(
         FeatureDataset(
@@ -54,11 +54,11 @@ if __name__ == "__main__":
             len_feature=config.len_feature,
             is_normal=False,
         ),
-        batch_size=64,
+        batch_size=2,
         shuffle=True,
         num_workers=config.num_workers,
         worker_init_fn=worker_init_fn,
-        drop_last=True,
+        drop_last=False,
     )
     test_loader = data.DataLoader(
         FeatureDataset(
@@ -73,9 +73,11 @@ if __name__ == "__main__":
         num_workers=config.num_workers,
         worker_init_fn=worker_init_fn,
     )
-    print(len(normal_train_loader))
+    # len(dataloader) = num_videos/batch_size
+    print(len(normal_train_loader)) 
     print(len(abnormal_train_loader))
     print(len(test_loader))
+
 
     test_info = {"step": [], "auc": [], "ap": [], "ac": []}
 

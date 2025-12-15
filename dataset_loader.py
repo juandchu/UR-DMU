@@ -35,6 +35,8 @@ class FeatureDataset(data.Dataset):
                     filtered_list.append(path)
             self.vid_list = filtered_list
 
+        # print(self.vid_list)
+
     def __len__(self):
         return len(self.vid_list)
 
@@ -45,19 +47,16 @@ class FeatureDataset(data.Dataset):
             return data, label, name
         else:
             data, label = self.get_data(index)
-            print("Train", index)
+            # print("Train", index)
             return data, label
 
     def get_data(self, index):
         vid_info = self.vid_list[index][0]
         filename = vid_info.split("/")[-1]  # e.g. "video_eo_94_650_ab.npy"
-        name = "_".join(filename.split("_")[:3])
-        # print(vid_info)
-        print("this should print")
+        name = filename  # modified to obtain the entire name for inference
         feature_path = os.path.join("feature_embeddings", vid_info)
         if not os.path.exists(feature_path):
-            print(f"Warning: {feature_path} not found. Skipping.")
-            return None  # mark missing entry
+            raise FileNotFoundError(f"{feature_path}      missing.")
 
         video_feature = np.load(os.path.join("feature_embeddings", vid_info)).astype(
             np.float32
