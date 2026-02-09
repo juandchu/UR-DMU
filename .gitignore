@@ -1,3 +1,7 @@
 /data
 /video_data_frames
 /feature_embeddings
+__pycache__
+/models
+*.pkl
+*.pth

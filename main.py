@@ -39,7 +39,7 @@ if __name__ == "__main__":
             len_feature=config.len_feature,
             is_normal=True,
         ),
-        batch_size=8, #original was 64
+        batch_size=8,  # original was 64
         shuffle=True,  # just shuffles the videos in the dataloader, not the frames or instances
         num_workers=config.num_workers,
         worker_init_fn=worker_init_fn,
@@ -74,10 +74,9 @@ if __name__ == "__main__":
         worker_init_fn=worker_init_fn,
     )
     # len(dataloader) = num_videos/batch_size
-    print(len(normal_train_loader)) 
+    print(len(normal_train_loader))
     print(len(abnormal_train_loader))
     print(len(test_loader))
-
 
     test_info = {"step": [], "auc": [], "ap": [], "ac": []}
 
@@ -89,10 +88,10 @@ if __name__ == "__main__":
         net.parameters(), lr=config.lr[0], betas=(0.9, 0.999), weight_decay=0.00005
     )  # betas for  momentum, weight decay for overfitting
 
-    wind = Visualizer(
-        env="UCF_URDMU", port="2022", use_incoming_socket=False
-    )  # live dashboard for model analytics. sets it up in localhost.
-    test(net, test_loader, wind, test_info, step=0)
+    # wind = Visualizer(
+    #     env="UCF_URDMU", port="2022", use_incoming_socket=False
+    # )  # live dashboard for model analytics. sets it up in localhost.
+    test(net, test_loader, test_info, step=0)
     for step in tqdm(
         range(1, config.num_iters + 1), total=config.num_iters, dynamic_ncols=True
     ):
@@ -110,11 +109,10 @@ if __name__ == "__main__":
             abnormal_loader_iter,
             optimizer,
             criterion,
-            wind,
             step,
         )
         if step % 10 == 0 and step > 10:
-            test(net, test_loader, wind, test_info, step=0)
+            test(net, test_loader, test_info, step=0)
 
             if test_info["auc"][-1] > best_auc:
                 best_auc = test_info["auc"][-1]

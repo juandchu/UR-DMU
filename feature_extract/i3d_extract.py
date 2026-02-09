@@ -54,11 +54,16 @@ i3d_model = None
 
 def init_model(load_model_path):
     global i3d_model
-    i3d_model = I3D(400, modality="rgb", dropout_prob=0, name="inception")
+    i3d_model = I3D(400, modality="rgb", dropout_prob=0, name="inception").cuda()
     i3d_model.eval()
-    state = torch.load(load_model_path)
-    i3d_model.load_state_dict(state)
-    i3d_model.cuda()
+
+    checkpoint = torch.load(load_model_path, map_location="cpu")
+    state = checkpoint["model_state_dict"] if "model_state_dict" in checkpoint else checkpoint
+
+    # remove finetuned head (155-way) so it can load into a 400-way model
+    state = {k: v for k, v in state.items() if not k.startswith("conv3d_0c_1x1.")}
+
+    i3d_model.load_state_dict(state, strict=False)
     i3d_model.eval()
 
 def forward_batch(b_data):
@@ -148,9 +153,9 @@ def run(video_dir, output_dir, batch_size):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--mode", default="rgb", type=str)
-    parser.add_argument("--load_model", default="model_rgb.pth", type=str)
+    parser.add_argument("--load_model", default="feature_extract/models/fine_tuning/i3d_best.pth", type=str)
     parser.add_argument("--input_dir", default="video_data_frames", type=str)
-    parser.add_argument("--output_dir", default="feature_embeddings", type=str)
+    parser.add_argument("--output_dir", default="./feature_embeddings", type=str)
     parser.add_argument("--batch_size", type=int, default=20)
     args = parser.parse_args()
 
@@ -159,16 +164,14 @@ if __name__ == "__main__":
     init_model(args.load_model)
 
     vid_list = []
-    for category in os.listdir(args.input_dir):
-        full_path = os.path.join(args.input_dir, category)
-        if not os.path.isdir(full_path):
+    for vid in os.listdir(args.input_dir):
+        vid_path = os.path.join(args.input_dir, vid)
+        if not os.path.isdir(vid_path):
             continue
-        for vid in os.listdir(full_path):
-            save_file = f"{vid}_i3d.npy"
-            if save_file not in os.listdir(args.output_dir):
-                vid_list.append(os.path.join(full_path, vid))
-
-    print(f"Extracting {len(vid_list)} videos…")
+        save_file = f"{vid}_i3d.npy"
+        if save_file not in os.listdir(args.output_dir):
+            vid_list.append(vid_path)
+        print(f"Extracting {len(vid_list)} videos…")
 
     for v in vid_list:
         run(v, args.output_dir, args.batch_size)

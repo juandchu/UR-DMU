@@ -47,7 +47,7 @@ def dump_frames(vid_item):
 def parse_args():
     parser = argparse.ArgumentParser(description="extract optical flows")
     parser.add_argument(
-        "--src_dir", default="data/test", type=str
+        "--src_dir", default="data/train", type=str
     )  # Modify path for loading training or testing.
     parser.add_argument("--out_dir", default="video_data_frames/", type=str)
     parser.add_argument("--level", type=int, choices=[1, 2], default=2)

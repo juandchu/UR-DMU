@@ -1,18 +1,24 @@
-# UR-DMU
-This repo contains the Pytorch implementation of our paper:
-> **Dual Memory Units with Uncertainty Regulation for Weakly Supervised Video Anomaly Detection**
+# Masters Thesis Project JD Chu
+This repo contains the implementation of a model for anomaly detection specifically designed for drone-recorded video data in cargo/port areas. It is based on the architecture of: 
+
+> **Dual Memory Units with Uncertainty Regulation for Weakly Supervised Video Anomaly Detection (UR-DMU)**
 > 
 > Hang Zhou, Junqing Yu, Wei Yang
-- **Accepted at AAAI 2023.**  
-![framework](data/framework.png)
 
 
 ## Training
 
 ### Setup
-**We use the extracted I3D features for UCF-Crime and XD-Violence datasets from the following works:**
-> [**UCF-Crime 10-crop I3D features**](https://github.com/Roc-Ng/DeepMIL)
-> 
+**To train this model it is necessary to extract the feature embedding of the videos using:**
+1. `video2frame_split.py` $\rightarrow$ Specify folder with mp4 videos for frame extraction
+2. 
+
+
+
+
+
+
+-----------------------
 > [**XD-Violence 5-crop I3D features**](https://roc-ng.github.io/XD-Violence/)
 > 
 > [**best performance ckpt for UCF**](models/ucf_trans_2022.pkl)
