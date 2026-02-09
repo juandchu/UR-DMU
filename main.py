@@ -91,6 +91,8 @@ if __name__ == "__main__":
     # wind = Visualizer(
     #     env="UCF_URDMU", port="2022", use_incoming_socket=False
     # )  # live dashboard for model analytics. sets it up in localhost.
+    train_costs = []
+
     test(net, test_loader, test_info, step=0)
     for step in tqdm(
         range(1, config.num_iters + 1), total=config.num_iters, dynamic_ncols=True
@@ -103,7 +105,7 @@ if __name__ == "__main__":
 
         if (step - 1) % len(abnormal_train_loader) == 0:
             abnormal_loader_iter = iter(abnormal_train_loader)
-        train(
+        train_cost = train(
             net,
             normal_loader_iter,
             abnormal_loader_iter,
@@ -111,6 +113,8 @@ if __name__ == "__main__":
             criterion,
             step,
         )
+        train_costs.append(train_cost)
+
         if step % 10 == 0 and step > 10:
             test(net, test_loader, test_info, step=0)
 
@@ -135,3 +139,8 @@ if __name__ == "__main__":
                     net.state_dict(),
                     os.path.join(args.model_path, "moerdijk_trans_{}.pkl".format(step)),
                 )
+
+    train_costs_np = np.array(train_costs)
+
+    save_path = os.path.join(config.output_path, "train_costs.csv")
+    np.savetxt(save_path, train_costs_np, delimiter=",")

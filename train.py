@@ -59,17 +59,14 @@ class AD_Loss(nn.Module):
 
 
 def train(net, normal_loader, abnormal_loader, optimizer, criterion, index):
-    # REMOVED 'wind' from arguments above
     net.train()
     net.flag = "Train"
 
     ninput, nlabel = next(normal_loader)
     ainput, alabel = next(abnormal_loader)
 
-    _data = torch.cat((ninput, ainput), 0)
-    _label = torch.cat((nlabel, alabel), 0)
-    _data = _data.cuda()
-    _label = _label.cuda()
+    _data = torch.cat((ninput, ainput), 0).cuda()
+    _label = torch.cat((nlabel, alabel), 0).cuda()
 
     predict = net(_data)
     cost, loss = criterion(predict, _label)
@@ -77,3 +74,5 @@ def train(net, normal_loader, abnormal_loader, optimizer, criterion, index):
     optimizer.zero_grad()
     cost.backward()
     optimizer.step()
+
+    return cost.item()
