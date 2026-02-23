@@ -26,8 +26,11 @@ if __name__ == "__main__":
         utils.set_seed(config.seed)
         worker_init_fn = np.random.seed(config.seed)
 
+    # Model creation
     config.len_feature = 1024
-    net = WSAD(config.len_feature, flag="Train", a_nums=60, n_nums=60)
+    net = WSAD(
+        config.len_feature, flag="Train", a_nums=60, n_nums=60
+    )  # 60 = memory prototypes
     net = net.cuda()
 
     normal_train_loader = data.DataLoader(

@@ -1,5 +1,5 @@
 /data
-/video_data_frames
+/video_frames
 /feature_embeddings
 __pycache__
 /models

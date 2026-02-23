@@ -1,16 +1,54 @@
-# Masters Thesis Project JD Chu
-This repo contains the implementation of a model for anomaly detection specifically designed for drone-recorded video data in cargo/port areas. It is based on the architecture of: 
+# [Master's Thesis] Drone-Based Video Anomaly Detection in Port Environments
+### Implementation Based on UR-DMU (Uncertainty Regulation with Dual Memory Units)
+
+This repository contains the implementation of a specialized Video Anomaly Detection (VAD) framework designed for **drone-recorded footage** in cargo and port facilities. 
+
+The project adapts the architecture introduced in:
 
 > **Dual Memory Units with Uncertainty Regulation for Weakly Supervised Video Anomaly Detection (UR-DMU)**
-> 
-> Hang Zhou, Junqing Yu, Wei Yang
+> *Authors: Hang Zhou, Junqing Yu, Wei Yang (AAAI 2023)*
+
+---
+### Dataset Structure
+For a dataset of n videos:
+```text
+data/
+├── train/
+│   ├── normal/
+│   │   ├── video_001/video_001.mp4
+│   │   ├── video_002/video_002.mp4
+│   │   └── ... (additional normal videos)
+│   └── abnormal/
+│       ├── video_001/video_001.mp4
+│       ├── video_002/video_002.mp4
+│       └── ... (additional abnormal videos)
+└── test/
+    ├── video_test_01/
+    │   ├── video_test_01.mp4
+    │   └── labels.csv      # Ground truth (start/end frames)
+    ├── video_test_02/
+    │   ├── video_test_02.mp4
+    │   └── labels.csv
+    └── ...
+```
+**Labels.csv** should be set as: 
+
+| start | end  | label |
+|-------|------|-------|
+| 100   | 800  | 1     |
+| 950   | 1500 | 1     |
+| 2000  | 2500 | 1     |
+
+---
 
 
-## Training
+### Pre Training Pipeline
+**To train the main model it is necessary to extract the feature embedding of the videos in the dataset.**
 
-### Setup
-**To train this model it is necessary to extract the feature embedding of the videos using:**
-1. `video2frame_split.py` $\rightarrow$ Specify folder with mp4 videos for frame extraction
+1.<u>Extract the frames of each video</u>
+
+`video2frame_split.py` $\rightarrow$ If the data is set as the previous instructions, this will generate a new folder with the same folder structure but the video frames.  
+
 2. 
 
 
@@ -18,7 +56,7 @@ This repo contains the implementation of a model for anomaly detection specifica
 
 
 
------------------------
+<!-- -----------------------
 > [**XD-Violence 5-crop I3D features**](https://roc-ng.github.io/XD-Violence/)
 > 
 > [**best performance ckpt for UCF**](models/ucf_trans_2022.pkl)
@@ -53,7 +91,7 @@ python ucf_infer.py
 We referenced the repos below for the code.
 
 * [RTFM](https://github.com/tianyu0207/RTFM)
-* [XDVioDet](https://github.com/Roc-Ng/XDVioDet)
+* [XDVioDet](https://github.com/Roc-Ng/XDVioDet) -->
 
 ## Citation
 
