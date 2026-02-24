@@ -1,15 +1,22 @@
 import torch
 import torch.utils.data as data
-import os
 import numpy as np
+from pathlib import Path
 import utils
 
 
 class FeatureDataset(data.Dataset):
     def __init__(
-        self, root_dir, modal, mode, num_segments, len_feature, seed=-1, is_normal=None
+        self,
+        data_dir,  # Point this to the main folder containing train/test dirs
+        mode,  # "Train" or "Test"
+        num_segments,  # The target size (N=200) for the video
+        len_feature=1024,
+        modal="RGB",
+        seed=-1,
+        is_normal=None,
     ):
-        # If another seed is passed
+        # 1. Reproducibility
         if seed >= 0:
             utils.set_seed(seed)
 
@@ -18,24 +25,33 @@ class FeatureDataset(data.Dataset):
         self.num_segments = num_segments
         self.len_feature = len_feature
 
-        split_path = os.path.join("list", "data_{}.list".format(self.mode))
-        split_file = open(split_path, "r")
+        # Use pathlib for robust, OS-agnostic path building
+        self.data_dir = Path(data_dir)
         self.vid_list = []
-        for line in split_file:
-            self.vid_list.append(line.split())
-        split_file.close()
 
-        # filter normal and abnormal
-        if is_normal is not None:
-            filtered_list = []
-            for path in self.vid_list:
-                if is_normal and "norm" in path[0].lower():
-                    filtered_list.append(path)
-                elif not is_normal and "ab" in path[0].lower():
-                    filtered_list.append(path)
-            self.vid_list = filtered_list
+        # 2. Dynamic File Discovery based on folder routes
+        if self.mode == "Train":
+            # Load Normal features if requested (or if we want both)
+            if is_normal is True or is_normal is None:
+                norm_dir = self.data_dir / "train" / "normal"
+                self.vid_list.extend(list(norm_dir.glob("*.npy")))
 
-        # print(self.vid_list)
+            # Load Abnormal features if requested (or if we want both)
+            if is_normal is False or is_normal is None:
+                abn_dir = self.data_dir / "train" / "abnormal"
+                self.vid_list.extend(list(abn_dir.glob("*.npy")))
+
+        elif self.mode == "Test":
+            # rglob recursively searches, so it works whether test files
+            # are loose in /test/ or nested in /test/normal/ etc.
+            test_dir = self.data_dir / "test"
+            self.vid_list.extend(list(test_dir.rglob("*.npy")))
+
+        # Safety Check: Alert if paths were wrong or empty
+        if not self.vid_list:
+            raise FileNotFoundError(
+                f"No .npy files found in {self.data_dir} for mode={self.mode}"
+            )
 
     def __len__(self):
         return len(self.vid_list)
@@ -43,44 +59,37 @@ class FeatureDataset(data.Dataset):
     def __getitem__(self, index):
         if self.mode == "Test":
             data, label, name = self.get_data(index)
-            # print("Test", index, name)
             return data, label, name
         else:
             data, label = self.get_data(index)
-            # print("Train", index)
             return data, label
 
     def get_data(self, index):
-        vid_info = self.vid_list[index][0]
-        filename = vid_info.split("/")[-1]  # e.g. "video_eo_94_650_ab.npy"
-        name = filename  # modified to obtain the entire name for inference
-        feature_path = os.path.join("feature_embeddings", vid_info)
-        if not os.path.exists(feature_path):
-            raise FileNotFoundError(f"{feature_path}      missing.")
+        # 3. Locate and Load File
+        file_path = self.vid_list[index]
+        name = file_path.name  # Extracts just "v_123.npy" cleanly
 
-        video_feature = np.load(os.path.join("feature_embeddings", vid_info)).astype(
-            np.float32
-        )
+        # Load the binary .npy file
+        video_feature = np.load(file_path).astype(np.float32)
 
-        f_lower = filename.lower()
-        if "norm" in f_lower:
-            label = 0  # normal
-        else:
-            label = 1  # abnormal
+        # 4. Ground Truth Labeling
+        # Keeps your original logic: checks filename for "norm"
+        f_lower = name.lower()
+        label = 0 if "norm" in f_lower else 1
 
         # ----------------------------
-        # 4. Temporal segmentation (training only)
+        # 5. Temporal segmentation (UR-DMU compression logic preserved)
         # ----------------------------
         if self.mode == "Train":
             new_feat = np.zeros(
                 (self.num_segments, video_feature.shape[1]), dtype=np.float32
             )
 
-            # Split frames into num_segments equal parts
             r = np.linspace(0, len(video_feature), self.num_segments + 1, dtype=int)
 
             for i in range(self.num_segments):
                 start, end = r[i], r[i + 1]
+
                 if start < end:
                     new_feat[i] = np.mean(video_feature[start:end], axis=0)
                 else:
@@ -88,9 +97,7 @@ class FeatureDataset(data.Dataset):
 
             video_feature = new_feat
 
-        # ----------------------------
-        # 5. Return data
-        # ----------------------------
+        # 6. Return Data
         if self.mode == "Test":
             return video_feature, label, name
         else:

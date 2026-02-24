@@ -11,6 +11,7 @@ from utils import Visualizer
 import os
 from dataset_loader import *
 from tqdm import tqdm
+import pandas as pd
 
 if __name__ == "__main__":
     args = parse_args()
@@ -35,37 +36,37 @@ if __name__ == "__main__":
 
     normal_train_loader = data.DataLoader(
         FeatureDataset(
-            root_dir=config.root_dir,
+            data_dir=config.root_dir,
             mode="Train",
             modal=config.modal,
-            num_segments=200,
+            num_segments=config.num_segments,
             len_feature=config.len_feature,
             is_normal=True,
         ),
-        batch_size=8,  # original was 64
+        batch_size=4,  # original was 64
         shuffle=True,  # just shuffles the videos in the dataloader, not the frames or instances
         num_workers=config.num_workers,
         worker_init_fn=worker_init_fn,
-        drop_last=False,
+        drop_last=True,
     )
     abnormal_train_loader = data.DataLoader(
         FeatureDataset(
-            root_dir=config.root_dir,
+            data_dir=config.root_dir,
             mode="Train",
             modal=config.modal,
-            num_segments=200,
+            num_segments=config.num_segments,
             len_feature=config.len_feature,
             is_normal=False,
         ),
-        batch_size=2,
+        batch_size=4,
         shuffle=True,
         num_workers=config.num_workers,
         worker_init_fn=worker_init_fn,
-        drop_last=False,
+        drop_last=True,
     )
     test_loader = data.DataLoader(
         FeatureDataset(
-            root_dir=config.root_dir,
+            data_dir=config.root_dir,
             mode="Test",
             modal=config.modal,
             num_segments=config.num_segments,
@@ -77,9 +78,9 @@ if __name__ == "__main__":
         worker_init_fn=worker_init_fn,
     )
     # len(dataloader) = num_videos/batch_size
-    print(len(normal_train_loader))
-    print(len(abnormal_train_loader))
-    print(len(test_loader))
+    # print(len(normal_train_loader))
+    # print(len(abnormal_train_loader))
+    # print(len(test_loader))
 
     test_info = {"step": [], "auc": [], "ap": [], "ac": []}
 
@@ -89,14 +90,13 @@ if __name__ == "__main__":
 
     optimizer = torch.optim.Adam(
         net.parameters(), lr=config.lr[0], betas=(0.9, 0.999), weight_decay=0.00005
-    )  # betas for  momentum, weight decay for overfitting
+    )
 
-    # wind = Visualizer(
-    #     env="UCF_URDMU", port="2022", use_incoming_socket=False
-    # )  # live dashboard for model analytics. sets it up in localhost.
-    train_costs = []
+    train_loss = []
+    test_metrics = []
 
-    test(net, test_loader, test_info, step=0)
+    test(net, test_loader, test_info, step=0, args=args)
+
     for step in tqdm(
         range(1, config.num_iters + 1), total=config.num_iters, dynamic_ncols=True
     ):
@@ -116,34 +116,40 @@ if __name__ == "__main__":
             criterion,
             step,
         )
-        train_costs.append(train_cost)
+        train_loss.append(train_cost)
 
         if step % 10 == 0 and step > 10:
-            test(net, test_loader, test_info, step=0)
-
+            # NEW
+            test(net, test_loader, test_info, step=step, args=args)
+            current_auc = test_info["auc"][-1]
+            current_ap = test_info["ap"][-1]
+            test_metrics.append([step, current_auc, current_ap])
             if test_info["auc"][-1] > best_auc:
-                best_auc = test_info["auc"][-1]
-                utils.save_best_record(
-                    test_info,
-                    os.path.join(
-                        config.output_path,
-                        "moerdijk_best_record_{}.txt".format(config.seed),
-                    ),
-                )
+                # best_auc = test_info["auc"][-1]
+                # utils.save_best_record(
+                #     test_info,
+                #     os.path.join(
+                #         config.output_path,
+                #         "ur_dmu_best{}.txt".format(config.seed),
+                #     ),
+                # )
 
                 torch.save(
                     net.state_dict(),
                     os.path.join(
-                        args.model_path, "moerdijk_trans_{}.pkl".format(config.seed)
+                        args.model_path, "ur_dmu_best{}.pkl".format(config.seed)
                     ),
                 )
-            if step == config.num_iters:
-                torch.save(
-                    net.state_dict(),
-                    os.path.join(args.model_path, "moerdijk_trans_{}.pkl".format(step)),
-                )
+            # if step == config.num_iters:
+            #     torch.save(
+            #         net.state_dict(),
+            #         os.path.join(args.model_path, "moerdijk_trans_{}.pkl".format(step)),
+            #     )
 
-    train_costs_np = np.array(train_costs)
+    train_costs_np = np.array(train_loss)
 
     save_path = os.path.join(config.output_path, "train_costs.csv")
     np.savetxt(save_path, train_costs_np, delimiter=",")
+    test_metrics_df = pd.DataFrame(test_metrics, columns=["step", "auc", "ap"])
+    save_metrics_path = os.path.join(config.output_path, "test_metrics.csv")
+    test_metrics_df.to_csv(save_metrics_path, index=False)

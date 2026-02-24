@@ -166,7 +166,7 @@ if __name__ == "__main__":
     parser.add_argument("--mode", default="rgb", type=str)
     parser.add_argument(
         "--load_model",
-        default="feature_extract/models/baseline/model_rgb.pth",
+        default="feature_extract/models/fine_tuning/i3d_best.pth",
         type=str,
     )
     parser.add_argument("--input_dir", default="video_frames", type=str)
