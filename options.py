@@ -10,7 +10,7 @@ def parse_args():
     parser.add_argument("--root_dir", type=str, required=True)
     parser.add_argument("--log_path", type=str, default="logs/")
     parser.add_argument("--modal", type=str, default="rgb", choices=["rgb,flow,both"])
-    parser.add_argument("--model_path", type=str, default="models/")
+    parser.add_argument("--model_path", type=str, required=True, help="in train where to save the model, in inference where to load the model from")
     parser.add_argument(
         "--lr",
         type=str,

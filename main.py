@@ -5,7 +5,7 @@ import utils
 from options import *
 from config import *
 from train import *
-from test import test
+from test_function import test
 from model import *
 from utils import Visualizer
 import os

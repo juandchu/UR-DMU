@@ -13,6 +13,8 @@ class Config(object):
         self.model_file = args.model_file
         self.seed = args.seed
         self.num_segments = args.num_segments
+        self.frequency = args.frequency
+        self.chunk_size = args.chunk_size
 
             
 if __name__ == "__main__":
