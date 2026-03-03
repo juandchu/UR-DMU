@@ -24,6 +24,7 @@ class FeatureDataset(data.Dataset):
         self.modal = modal
         self.num_segments = num_segments
         self.len_feature = len_feature
+        self.is_normal = is_normal
 
         # Use pathlib for robust, OS-agnostic path building
         self.data_dir = Path(data_dir)
@@ -73,9 +74,29 @@ class FeatureDataset(data.Dataset):
         video_feature = np.load(file_path).astype(np.float32)
 
         # 4. Ground Truth Labeling
-        # Keeps your original logic: checks filename for "norm"
-        f_lower = name.lower()
-        label = 0 if "norm" in f_lower else 1
+        # Prefer directory-based labels (train/normal vs train/abnormal) over filename heuristics.
+        # This avoids accidentally labeling *all* files as abnormal when filenames don't contain "norm".
+        label = None
+        try:
+            rel_parts = file_path.relative_to(self.data_dir).parts
+        except ValueError:
+            rel_parts = file_path.parts
+        rel_parts_lower = [p.lower() for p in rel_parts]
+
+        if "normal" in rel_parts_lower:
+            label = 0
+        elif "abnormal" in rel_parts_lower:
+            label = 1
+
+        if label is None:
+            if self.is_normal is True:
+                label = 0
+            elif self.is_normal is False:
+                label = 1
+
+        if label is None:
+            f_lower = name.lower()
+            label = 0 if ("norm" in f_lower or "normal" in f_lower) else 1
 
         # ----------------------------
         # 5. Temporal segmentation (UR-DMU compression logic preserved)
