@@ -19,9 +19,8 @@ CHUNK_SIZE = 16  # This is the sliding window size
 FREQUENCY = 16  # How many frames after the last 'window start frame' should the next window start
 MIN_FRAMES = 16  # Minimum number of frames per video to discard video
 
-
 ########################################
-# 1. PYTORCH DATASET WITH 10-CROP
+# 1. PYTORCH DATASET (DRONE-OPTIMIZED TILING)
 ########################################
 class VideoSnippetDataset(Dataset):
     def __init__(self, frames_dir, rgb_files, frame_indices):
@@ -29,13 +28,14 @@ class VideoSnippetDataset(Dataset):
         self.rgb_files = rgb_files
         self.frame_indices = frame_indices
 
-        # Highly optimized torchvision transforms
+        # HIGHER RESOLUTION BASE
         self.transform = T.Compose([
-            # PIL resize expects (W, H) but torchvision Resize expects (H, W)
-            # We resize to the base resolution before cropping
-            T.Resize((256, 340), interpolation=T.InterpolationMode.LANCZOS),
-            T.ToTensor(),  # Converts to [0.0, 1.0] and moves channels to (C, H, W)
-            T.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),  # Normalizes to [-1, 1]
+            # We scale to 448x448 (exactly double the crop size).
+            # This ignores aspect ratio, but I3D is robust to squished imagery,
+            # and it ensures we process 100% of the frame without dropping the edges.
+            T.Resize((448, 448), interpolation=T.InterpolationMode.LANCZOS),
+            T.ToTensor(),  
+            T.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),  
         ])
 
     def __len__(self):
@@ -45,33 +45,33 @@ class VideoSnippetDataset(Dataset):
         indices = self.frame_indices[idx]
         snippet = []
 
-        # 1. Load the full frames for the chunk
         for frame_idx in indices:
             img_path = os.path.join(self.frames_dir, self.rgb_files[frame_idx])
             img = Image.open(img_path).convert("RGB")
-            img_tensor = self.transform(img)  # Shape: (C, 256, 340)
+            img_tensor = self.transform(img)  # Shape: (C, 448, 448)
             snippet.append(img_tensor)
 
-        # 2. Stack into (C, T, H, W) 
-        snippet_tensor = torch.stack(snippet, dim=1) # Shape: (3, 16, 256, 340)
+        # Stack into (C, T, H, W) 
+        snippet_tensor = torch.stack(snippet, dim=1) # Shape: (3, 16, 448, 448)
 
-        # 3. Generate the 5 Spatial Crops (224x224)
-        c1 = snippet_tensor[:, :, :224, :224]        # Top Left
-        c2 = snippet_tensor[:, :, :224, -224:]       # Top Right
-        c3 = snippet_tensor[:, :, 16:240, 58:282]    # Center Crop
-        c4 = snippet_tensor[:, :, -224:, :224]       # Bottom Left
-        c5 = snippet_tensor[:, :, -224:, -224:]      # Bottom Right
+        # DRONE-OPTIMIZED QUADRANT CROPS (224x224)
+        # This preserves 4x more pixel data for small human figures.
+        c1 = snippet_tensor[:, :, :224, :224]        # Top-Left Quadrant
+        c2 = snippet_tensor[:, :, :224, 224:]        # Top-Right Quadrant
+        c3 = snippet_tensor[:, :, 224:, :224]        # Bottom-Left Quadrant
+        c4 = snippet_tensor[:, :, 224:, 224:]        # Bottom-Right Quadrant
+        
+        # Center crop to capture anything split by the quadrant seams
+        c5 = snippet_tensor[:, :, 112:336, 112:336]  # Center
         
         crops = [c1, c2, c3, c4, c5]
 
-        # 4. Generate the 5 Horizontal Flips
-        # We flip along the last dimension (width)
+        # Generate the 5 Horizontal Flips
         flips = [torch.flip(c, dims=[-1]) for c in crops]
 
-        # 5. Combine all 10 variations into a single tensor
+        # Combine all 10 variations
         all_crops = crops + flips 
         
-        # Stack them along a new first dimension. 
         # Final shape returned: (10, C, T, 224, 224)
         return torch.stack(all_crops, dim=0)
 
@@ -170,12 +170,12 @@ def run(video_dir, input_root, output_root, batch_size, num_workers):
         # while simultaneously dropping the useless 1x1x1 spatial dims.
         features = features[0].view(B, num_crops, 1024) # Shape: (Batch, 10, 1024)
 
-        # 3. Average the 10 crops together 
-        # We take the mean across dimension 1 (the 10 crops). 
+        # 3. Take the maximum across the 10 crops
+        # We take the max across dimension 1 (the 10 crops). 
         # Shape becomes: (Batch, 1024)
-        features_mean = features.mean(dim=1).cpu().numpy() 
+        features_max = features.max(dim=1)[0].cpu().numpy()
         
-        all_features.append(features_mean)
+        all_features.append(features_max)
 
     # 4. Concatenate all batches temporally
     # Shape becomes exactly: (T_chunks, 1024)

@@ -8,6 +8,8 @@ def parse_args():
     parser = argparse.ArgumentParser(description=descript)
     parser.add_argument("--output_path", type=str, default="outputs/")
     parser.add_argument("--root_dir", type=str, required=True)
+    parser.add_argument("--a_nums",type=int, default=60, help="number of abnormal prototypes")
+    parser.add_argument("--n_nums",type=int, default=60, help="number of normal prototypes")
     parser.add_argument("--log_path", type=str, default="logs/")
     parser.add_argument("--modal", type=str, default="rgb", choices=["rgb,flow,both"])
     parser.add_argument("--model_path", type=str, required=True, help="in train where to save the model, in inference where to load the model from")

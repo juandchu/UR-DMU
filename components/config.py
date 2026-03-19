@@ -1,4 +1,4 @@
-import options
+import components.options as options
 class Config(object):
     def __init__(self, args):
         self.root_dir = args.root_dir
@@ -15,6 +15,8 @@ class Config(object):
         self.num_segments = args.num_segments
         self.frequency = args.frequency
         self.chunk_size = args.chunk_size
+        self.a_nums = args.a_nums
+        self.n_nums = args.n_nums
 
             
 if __name__ == "__main__":

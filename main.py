@@ -1,15 +1,15 @@
 import pdb
 import numpy as np
 import torch.utils.data as data
-import utils
-from options import *
-from config import *
-from train import *
-from test_function import test
-from model import *
-from utils import Visualizer
+import components.utils as utils
+from components.options import *
+from components.config import *
+from components.train import *
+from components.test_function import test
+from components.model import *
+from components.utils import Visualizer
 import os
-from dataset_loader import *
+from components.dataset_loader import *
 from tqdm import tqdm
 import pandas as pd
 
@@ -30,7 +30,7 @@ if __name__ == "__main__":
     # Model creation
     config.len_feature = 1024
     net = WSAD(
-        config.len_feature, flag="Train", a_nums=60, n_nums=60
+        config.len_feature, flag="Train", a_nums=config.a_nums, n_nums=config.n_nums
     )  # 60 = memory prototypes
     net = net.cuda()
 
@@ -80,7 +80,7 @@ if __name__ == "__main__":
     # len(dataloader) = num_videos/batch_size
     # print(len(normal_train_loader))
     # print(len(abnormal_train_loader))
-    # print(len(test_loader))
+    print(len(test_loader))
 
     test_info = {"step": [], "auc": [], "ap": [], "ac": []}
 

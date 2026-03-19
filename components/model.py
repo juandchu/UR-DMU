@@ -1,9 +1,9 @@
 import torch
 import torch.nn as nn
 from torch.nn.modules.module import Module
-from memory import Memory_Unit
-from translayer import Transformer
-from utils import norm
+from components.memory import Memory_Unit
+from components.translayer import Transformer
+from components.utils import norm
 
 class Temporal(Module):
     def __init__(self, input_size, out_size):

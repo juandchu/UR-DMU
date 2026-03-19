@@ -7,10 +7,10 @@ from torch.utils.data import DataLoader
 from scipy.interpolate import interp1d
 
 # Reuse your existing imports
-from model import WSAD
-from config import Config
-from options import parse_args
-from dataset_loader import FeatureDataset
+from components.model import WSAD
+from components.config import Config
+from components.options import parse_args
+from components.dataset_loader import FeatureDataset
 
 import cv2
 import os
@@ -27,8 +27,6 @@ def visualize_results(net, test_loader, args, video_folder, output_dir="./visual
     extensions = ['.mp4', '.avi', '.mkv', '.mov']
 
     for i, (data, label, name) in enumerate(test_loader):
-        if i >= 3: break
-        
         vid_name = name[0] if isinstance(name, (list, tuple)) else name
         vid_name = vid_name.replace("_i3d.npy", "").replace(".npy", "")
         
@@ -137,7 +135,7 @@ if __name__ == "__main__":
 
     # Load Model
     net = WSAD(config.len_feature, flag="Test", a_nums=60, n_nums=60).to(device)
-    net.load_state_dict(torch.load(args.model_path, map_location=device))
+    net.load_state_dict(torch.load(args.model_path, map_location=device, weights_only=True))
 
     # Load Data
     test_loader = DataLoader(

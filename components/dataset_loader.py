@@ -2,7 +2,7 @@ import torch
 import torch.utils.data as data
 import numpy as np
 from pathlib import Path
-import utils
+import components.utils as utils
 
 
 class FeatureDataset(data.Dataset):

@@ -5,3 +5,8 @@ __pycache__
 /models
 *.pkl
 *.pth
+/visualizations
+/outputs
+/ground_truth
+/auc
+/debug_plots

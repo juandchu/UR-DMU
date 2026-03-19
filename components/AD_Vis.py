@@ -5,7 +5,7 @@ import cv2
 import os
 from feature_extract.i3dpt import I3D
 from tqdm import tqdm
-from model import WSAD
+from components.model import WSAD
 from time import time
 import matplotlib.pyplot as plt
 
